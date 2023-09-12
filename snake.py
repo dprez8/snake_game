@@ -2,6 +2,7 @@ import pygame
 import random
 import pandas as pd
 import time
+import datetime
 
 # Initialize pygame
 pygame.init()
@@ -115,7 +116,7 @@ def add_move():
     return register
 
 def game_over():
-    history.to_csv("history.csv")
+    history[:-1].to_csv(f"registers/{str(datetime.datetime.now()).replace('.', '-').replace(':', '-')}.csv")
     my_font = pygame.font.SysFont("times new roman", 50)
     game_over_surface = my_font.render("Your Score is: " + str(score), True, red)
     game_over_rect = game_over_surface.get_rect()
