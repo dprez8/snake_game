@@ -103,7 +103,6 @@ def add_move():
 
     global counter
     register["count"] = counter
-    counter += 1
     register["rel_hor_dist_obj"], register["rel_vert_dist_obj"] = get_rel_fruit_distance()
     register["rel_front_dist_wall"], register["rel_right_dist_wall"], register["rel_left_dist_wall"] = get_rel_wall_distance()
     register["rel_front_dist_body"], register["rel_right_dist_body"], register["rel_left_dist_body"] = get_rel_body_distance()
@@ -130,6 +129,7 @@ def game_over():
 
 # Main game loop
 while True:
+    
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
@@ -170,6 +170,7 @@ while True:
 
     print(add_move())
     history = history._append(add_move(), ignore_index=True)
+    counter += 1
 
     # Snake body growing mechanism
     snake_body.insert(0, list(snake_pos))
