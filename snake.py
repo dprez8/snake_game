@@ -1,6 +1,7 @@
 import pygame
 import random
 import pandas as pd
+import time
 
 # Initialize pygame
 pygame.init()
@@ -11,9 +12,11 @@ screen = pygame.display.set_mode((width, height))
 pygame.display.set_caption("Snake Game")
 
 # Colors
-white = (255, 255, 255)
+white = (0, 0, 255)
 green = (0, 255, 0)
 red = (255, 0, 0)
+blue = (0, 0, 255)
+black = (0, 0, 0)
 
 # Snake properties
 snake_pos = [100, 50]
@@ -120,6 +123,7 @@ def game_over():
     screen.fill(white)
     screen.blit(game_over_surface, game_over_rect)
     pygame.display.flip()
+    time.sleep(5)
     pygame.quit()
     quit()
 
@@ -182,8 +186,27 @@ while True:
     screen.fill(white)
     for pos in snake_body:
         pygame.draw.rect(screen, green, pygame.Rect(pos[0], pos[1], 10, 10))
-
+    
+    
+    if snake_dir == "UP":
+        pygame.draw.rect(screen, black, pygame.Rect(snake_pos[0]+ 1, snake_pos[1] + 3, 3, 3))
+        pygame.draw.rect(screen, black, pygame.Rect(snake_pos[0]+ 6, snake_pos[1] + 3, 3, 3))
+    if snake_dir == "DOWN":
+        pygame.draw.rect(screen, black, pygame.Rect(snake_pos[0]+ 1, snake_pos[1] + 2, 3, 3))
+        pygame.draw.rect(screen, black, pygame.Rect(snake_pos[0]+ 6, snake_pos[1] + 2, 3, 3))
+    if snake_dir == "LEFT":
+        pygame.draw.rect(screen, black, pygame.Rect(snake_pos[0], snake_pos[1] + 2, 3, 3))
+        pygame.draw.rect(screen, black, pygame.Rect(snake_pos[0]+ 5, snake_pos[1] + 2, 3, 3))
+    if snake_dir == "RIGHT":
+        pygame.draw.rect(screen, black, pygame.Rect(snake_pos[0]+ 2, snake_pos[1] + 2, 3, 3))
+        pygame.draw.rect(screen, black, pygame.Rect(snake_pos[0]+ 7, snake_pos[1] + 2, 3, 3))
+    
     pygame.draw.rect(screen, red, pygame.Rect(food_pos[0], food_pos[1], 10, 10))
+    pygame.draw.rect(screen, white, pygame.Rect(food_pos[0], food_pos[1], 2, 2))
+    pygame.draw.rect(screen, white, pygame.Rect(food_pos[0]+8, food_pos[1], 2, 2))
+    pygame.draw.rect(screen, white, pygame.Rect(food_pos[0], food_pos[1]+8, 2, 2))
+    pygame.draw.rect(screen, white, pygame.Rect(food_pos[0]+8, food_pos[1]+8, 2, 2))
+    pygame.draw.rect(screen, green, pygame.Rect(food_pos[0]+5, food_pos[1]-1, 4, 2))
 
     # Game Over conditions
     if snake_pos[0] < 0 or snake_pos[0] > width-10:
