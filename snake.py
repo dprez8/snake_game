@@ -3,6 +3,22 @@ import random
 import pandas as pd
 import time
 import datetime
+from sklearn import tree
+
+# Training
+data = pd.read_csv('dataFloat.csv', sep=',')
+# Iterate through rows using itertuples()
+features = []
+labels = []
+
+for row in data.itertuples():
+    features.insert(0,[row.count, row.rel_hor_dist_obj, row.rel_vert_dist_obj,row.rel_front_dist_wall, row.rel_right_dist_wall, row.rel_left_dist_wall,row.rel_front_dist_body, row.rel_right_dist_body, row.rel_left_dist_body,row.snake_pos_x, row.snake_pos_y, row.snake_dir, row.score])
+    labels.append(row.snake_next_dir)
+
+features.reverse()
+
+classifier = tree.DecisionTreeClassifier()
+classifier.fit(features,labels)
 
 # Initialize pygame
 pygame.init()
@@ -108,11 +124,30 @@ def add_move():
     register["rel_front_dist_body"], register["rel_right_dist_body"], register["rel_left_dist_body"] = get_rel_body_distance()
     register["snake_pos_x"] = snake_pos[0]
     register["snake_pos_y"] = snake_pos[1]
-    register["snake_dir"] = last_dir
-    register["snake_next_dir"] = change_to
+    register["snake_dir"] = moves_to_float(last_dir)
+    register["snake_next_dir"] = moves_to_float(change_to)
     register["score"] = score
 
     return register
+
+def moves_to_float(move):
+    case_dict = {
+    'UP': 0,
+    'RIGHT': 3,
+    'DOWN': 6,
+    'LEFT': 9
+    }
+    return case_dict.get(move, -1) 
+
+def float_to_moves(float):
+    case_dict = {
+    0: 'UP',
+    3: 'RIGHT',
+    6: 'DOWN',
+    9: 'LEFT'
+    }
+    return case_dict.get(float, -1)
+
 
 def game_over():
     history[:-1].to_csv(f"registers/{str(datetime.datetime.now()).replace('.', '-').replace(':', '-')}.csv")
@@ -137,19 +172,32 @@ while True:
             quit()
 
         # Arrow keys to control snake
-        keys = pygame.key.get_pressed()
-        for key in keys:
-            if keys[pygame.K_UP]:
-                change_to = "UP"
-            if keys[pygame.K_DOWN]:
-                change_to = "DOWN"
-            if keys[pygame.K_LEFT]:
-                change_to = "LEFT"
-            if keys[pygame.K_RIGHT]:
-                change_to = "RIGHT"
+        #keys = pygame.key.get_pressed()
+        #for key in keys:
+        #    if keys[pygame.K_UP]:
+        #        change_to = "UP"
+        #    if keys[pygame.K_DOWN]:
+        #        change_to = "DOWN"
+        #    if keys[pygame.K_LEFT]:
+        #        change_to = "LEFT"
+        #    if keys[pygame.K_RIGHT]:
+        #        change_to = "RIGHT"
+    
+
+    last_dir = snake_dir
+
+    # Change direction from prediction
+    register = add_move().copy()
+
+    attributes = [[register["count"], register["rel_hor_dist_obj"], register["rel_vert_dist_obj"], register["rel_front_dist_wall"], register["rel_right_dist_wall"], register["rel_left_dist_wall"], register["rel_front_dist_body"], register["rel_right_dist_body"], register["rel_left_dist_body"], register["snake_pos_x"], register["snake_pos_y"], register["snake_dir"], register["score"]]]
+
+    prediction = classifier.predict(attributes)[0]
+    print(f"Prediccion: {prediction}")
+
+    change_to = float_to_moves(prediction)
 
     # Validation of direction
-    last_dir = snake_dir
+   
     if change_to == "UP" and not snake_dir == "DOWN":
         snake_dir = "UP"
     if change_to == "DOWN" and not snake_dir == "UP":
