@@ -5,6 +5,7 @@ import time
 import datetime
 from sklearn import tree
 
+
 # Training
 data = pd.read_csv('dataFloat.csv', sep=',')
 # Iterate through rows using itertuples()
@@ -23,11 +24,6 @@ classifier.fit(features,labels)
 # Initialize pygame
 pygame.init()
 
-# Set up display
-width, height = 640, 480
-screen = pygame.display.set_mode((width, height))
-pygame.display.set_caption("Snake Game")
-
 # Colors
 white = (0, 0, 255)
 green = (0, 255, 0)
@@ -35,10 +31,23 @@ red = (255, 0, 0)
 blue = (0, 0, 255)
 black = (0, 0, 0)
 
+# Button properties
+BUTTON_WIDTH, BUTTON_HEIGHT = 200, 50
+BUTTON_COLOR = (0, 128, 255)
+BUTTON_TEXT_COLOR = (255, 255, 255)
+BUTTON_TEXT_SIZE = 36
+BUTTON_PADDING = 20
+
+# Set up display
+width, height = 640, 480
+screen = pygame.display.set_mode((width, height))
+pygame.display.set_caption("Snake Game")
+
 # Snake properties
 snake_pos = [100, 50]
 snake_body = [[100, 50], [90, 50], [80, 50]]
 snake_dir = "RIGHT"
+last_dir = snake_dir
 change_to = snake_dir
 
 # Food properties
@@ -148,129 +157,176 @@ def float_to_moves(float):
     }
     return case_dict.get(float, -1)
 
+def create_button(text, x, y):
+    font = pygame.font.Font(None, BUTTON_TEXT_SIZE)
+    button = pygame.Rect(x, y, BUTTON_WIDTH, BUTTON_HEIGHT)
+    pygame.draw.rect(screen, BUTTON_COLOR, button)
+    text_surface = font.render(text, True, BUTTON_TEXT_COLOR)
+    text_rect = text_surface.get_rect(center=button.center)
+    screen.blit(text_surface, text_rect)
+    return button
 
-def game_over():
-    history[:-1].to_csv(f"registers/{str(datetime.datetime.now()).replace('.', '-').replace(':', '-')}.csv")
-    my_font = pygame.font.SysFont("times new roman", 50)
-    game_over_surface = my_font.render("Your Score is: " + str(score), True, red)
+def game_over(game_mode):  
+    if (game_mode == "MANUAL"):
+        history[:-1].to_csv(f"registers/{str(datetime.datetime.now()).replace('.', '-').replace(':', '-')}.csv")
+    
+    if(game_mode == "MANUAL" or game_mode == "AUTOMATIC"): 
+        my_font = pygame.font.SysFont("times new roman", 50)
+        game_over_surface = my_font.render("Your Score is: " + str(score), True, red)
+
     game_over_rect = game_over_surface.get_rect()
     game_over_rect.midtop = (width/2, height/4)
     screen.fill(white)
     screen.blit(game_over_surface, game_over_rect)
     pygame.display.flip()
-    time.sleep(5)
+    time.sleep(1)
     pygame.quit()
     quit()
 
-# Main game loop
-while True:
+def game_loop(game_mode):
+
+    global snake_dir, last_dir, change_to, history, counter, food_pos, food_spawn, score
+
+    while True:
     
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                game_over(game_mode)
+                pygame.quit()
+                quit()
+
+        last_dir = snake_dir
+        
+
+        if(game_mode == "AUTOMATIC"):
+            
+            # Change direction from prediction
+            register = add_move().copy()
+
+            attributes = [[register["count"], register["rel_hor_dist_obj"], register["rel_vert_dist_obj"], register["rel_front_dist_wall"], register["rel_right_dist_wall"], register["rel_left_dist_wall"], register["rel_front_dist_body"], register["rel_right_dist_body"], register["rel_left_dist_body"], register["snake_pos_x"], register["snake_pos_y"], register["snake_dir"], register["score"]]]
+
+            prediction = classifier.predict(attributes)[0]
+            print(f"Prediccion: {prediction}")
+
+            change_to = float_to_moves(prediction)
+        
+        elif(game_mode == "MANUAL"):
+            # Arrow keys to control snake
+            keys = pygame.key.get_pressed()
+            for key in keys:
+                if keys[pygame.K_UP]:
+                    change_to = "UP"
+                if keys[pygame.K_DOWN]:
+                    change_to = "DOWN"
+                if keys[pygame.K_LEFT]:
+                    change_to = "LEFT"
+                if keys[pygame.K_RIGHT]:
+                    change_to = "RIGHT"
+
+        # Validation of direction
+    
+        if change_to == "UP" and not snake_dir == "DOWN":
+            snake_dir = "UP"
+        if change_to == "DOWN" and not snake_dir == "UP":
+            snake_dir = "DOWN"
+        if change_to == "LEFT" and not snake_dir == "RIGHT":
+            snake_dir = "LEFT"
+        if change_to == "RIGHT" and not snake_dir == "LEFT":
+            snake_dir = "RIGHT"
+
+        # Moving the snake
+        if snake_dir == "UP":
+            snake_pos[1] -= 10
+        if snake_dir == "DOWN":
+            snake_pos[1] += 10
+        if snake_dir == "LEFT":
+            snake_pos[0] -= 10
+        if snake_dir == "RIGHT":
+            snake_pos[0] += 10
+
+        print(add_move())
+        history = history._append(add_move(), ignore_index=True)
+        counter += 1
+
+        # Snake body growing mechanism
+        snake_body.insert(0, list(snake_pos))
+        if snake_pos[0] == food_pos[0] and snake_pos[1] == food_pos[1]:
+            score += 1
+            food_spawn = False
+        else:
+            snake_body.pop()
+
+        if not food_spawn:
+            food_pos = [random.randrange(1, (width//10)) * 10, random.randrange(1, (height//10)) * 10]
+            food_spawn = True
+
+        # Draw snake and food
+        screen.fill(white)
+        for pos in snake_body:
+            pygame.draw.rect(screen, green, pygame.Rect(pos[0], pos[1], 10, 10))
+        
+        
+        if snake_dir == "UP":
+            pygame.draw.rect(screen, black, pygame.Rect(snake_pos[0]+ 1, snake_pos[1] + 3, 3, 3))
+            pygame.draw.rect(screen, black, pygame.Rect(snake_pos[0]+ 6, snake_pos[1] + 3, 3, 3))
+        if snake_dir == "DOWN":
+            pygame.draw.rect(screen, black, pygame.Rect(snake_pos[0]+ 1, snake_pos[1] + 2, 3, 3))
+            pygame.draw.rect(screen, black, pygame.Rect(snake_pos[0]+ 6, snake_pos[1] + 2, 3, 3))
+        if snake_dir == "LEFT":
+            pygame.draw.rect(screen, black, pygame.Rect(snake_pos[0], snake_pos[1] + 2, 3, 3))
+            pygame.draw.rect(screen, black, pygame.Rect(snake_pos[0]+ 5, snake_pos[1] + 2, 3, 3))
+        if snake_dir == "RIGHT":
+            pygame.draw.rect(screen, black, pygame.Rect(snake_pos[0]+ 2, snake_pos[1] + 2, 3, 3))
+            pygame.draw.rect(screen, black, pygame.Rect(snake_pos[0]+ 7, snake_pos[1] + 2, 3, 3))
+        
+        pygame.draw.rect(screen, red, pygame.Rect(food_pos[0], food_pos[1], 10, 10))
+        pygame.draw.rect(screen, white, pygame.Rect(food_pos[0], food_pos[1], 2, 2))
+        pygame.draw.rect(screen, white, pygame.Rect(food_pos[0]+8, food_pos[1], 2, 2))
+        pygame.draw.rect(screen, white, pygame.Rect(food_pos[0], food_pos[1]+8, 2, 2))
+        pygame.draw.rect(screen, white, pygame.Rect(food_pos[0]+8, food_pos[1]+8, 2, 2))
+        pygame.draw.rect(screen, green, pygame.Rect(food_pos[0]+5, food_pos[1]-1, 4, 2))
+
+        # Game Over conditions
+        if snake_pos[0] < 0 or snake_pos[0] > width-10:
+            game_over(game_mode)
+        if snake_pos[1] < 0 or snake_pos[1] > height-10:
+            game_over(game_mode)
+
+        for block in snake_body[1:]:
+            if snake_pos[0] == block[0] and snake_pos[1] == block[1]:
+                game_over(game_mode)
+
+        pygame.display.update()
+        clock.tick(5)
+
+while True:
+    game_mode = "UNSTARTED"
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            game_over()
+            game_over(game_mode)
             pygame.quit()
             quit()
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if button1.collidepoint(event.pos):
+                print("Button 1 clicked!")
+                pygame.display.flip()
+                game_mode = "MANUAL"
+                game_loop(game_mode)
 
-        # Arrow keys to control snake
-        #keys = pygame.key.get_pressed()
-        #for key in keys:
-        #    if keys[pygame.K_UP]:
-        #        change_to = "UP"
-        #    if keys[pygame.K_DOWN]:
-        #        change_to = "DOWN"
-        #    if keys[pygame.K_LEFT]:
-        #        change_to = "LEFT"
-        #    if keys[pygame.K_RIGHT]:
-        #        change_to = "RIGHT"
-    
+            elif button2.collidepoint(event.pos):
+                print("Button 2 clicked!")
+                pygame.display.flip()
+                game_mode = "AUTOMATIC"
+                game_loop(game_mode)
 
-    last_dir = snake_dir
-
-    # Change direction from prediction
-    register = add_move().copy()
-
-    attributes = [[register["count"], register["rel_hor_dist_obj"], register["rel_vert_dist_obj"], register["rel_front_dist_wall"], register["rel_right_dist_wall"], register["rel_left_dist_wall"], register["rel_front_dist_body"], register["rel_right_dist_body"], register["rel_left_dist_body"], register["snake_pos_x"], register["snake_pos_y"], register["snake_dir"], register["score"]]]
-
-    prediction = classifier.predict(attributes)[0]
-    print(f"Prediccion: {prediction}")
-
-    change_to = float_to_moves(prediction)
-
-    # Validation of direction
-   
-    if change_to == "UP" and not snake_dir == "DOWN":
-        snake_dir = "UP"
-    if change_to == "DOWN" and not snake_dir == "UP":
-        snake_dir = "DOWN"
-    if change_to == "LEFT" and not snake_dir == "RIGHT":
-        snake_dir = "LEFT"
-    if change_to == "RIGHT" and not snake_dir == "LEFT":
-        snake_dir = "RIGHT"
-
-    # Moving the snake
-    if snake_dir == "UP":
-        snake_pos[1] -= 10
-    if snake_dir == "DOWN":
-        snake_pos[1] += 10
-    if snake_dir == "LEFT":
-        snake_pos[0] -= 10
-    if snake_dir == "RIGHT":
-        snake_pos[0] += 10
-
-    print(add_move())
-    history = history._append(add_move(), ignore_index=True)
-    counter += 1
-
-    # Snake body growing mechanism
-    snake_body.insert(0, list(snake_pos))
-    if snake_pos[0] == food_pos[0] and snake_pos[1] == food_pos[1]:
-        score += 1
-        food_spawn = False
-    else:
-        snake_body.pop()
-
-    if not food_spawn:
-        food_pos = [random.randrange(1, (width//10)) * 10, random.randrange(1, (height//10)) * 10]
-        food_spawn = True
-
-    # Draw snake and food
     screen.fill(white)
-    for pos in snake_body:
-        pygame.draw.rect(screen, green, pygame.Rect(pos[0], pos[1], 10, 10))
-    
-    
-    if snake_dir == "UP":
-        pygame.draw.rect(screen, black, pygame.Rect(snake_pos[0]+ 1, snake_pos[1] + 3, 3, 3))
-        pygame.draw.rect(screen, black, pygame.Rect(snake_pos[0]+ 6, snake_pos[1] + 3, 3, 3))
-    if snake_dir == "DOWN":
-        pygame.draw.rect(screen, black, pygame.Rect(snake_pos[0]+ 1, snake_pos[1] + 2, 3, 3))
-        pygame.draw.rect(screen, black, pygame.Rect(snake_pos[0]+ 6, snake_pos[1] + 2, 3, 3))
-    if snake_dir == "LEFT":
-        pygame.draw.rect(screen, black, pygame.Rect(snake_pos[0], snake_pos[1] + 2, 3, 3))
-        pygame.draw.rect(screen, black, pygame.Rect(snake_pos[0]+ 5, snake_pos[1] + 2, 3, 3))
-    if snake_dir == "RIGHT":
-        pygame.draw.rect(screen, black, pygame.Rect(snake_pos[0]+ 2, snake_pos[1] + 2, 3, 3))
-        pygame.draw.rect(screen, black, pygame.Rect(snake_pos[0]+ 7, snake_pos[1] + 2, 3, 3))
-    
-    pygame.draw.rect(screen, red, pygame.Rect(food_pos[0], food_pos[1], 10, 10))
-    pygame.draw.rect(screen, white, pygame.Rect(food_pos[0], food_pos[1], 2, 2))
-    pygame.draw.rect(screen, white, pygame.Rect(food_pos[0]+8, food_pos[1], 2, 2))
-    pygame.draw.rect(screen, white, pygame.Rect(food_pos[0], food_pos[1]+8, 2, 2))
-    pygame.draw.rect(screen, white, pygame.Rect(food_pos[0]+8, food_pos[1]+8, 2, 2))
-    pygame.draw.rect(screen, green, pygame.Rect(food_pos[0]+5, food_pos[1]-1, 4, 2))
 
-    # Game Over conditions
-    if snake_pos[0] < 0 or snake_pos[0] > width-10:
-        game_over()
-    if snake_pos[1] < 0 or snake_pos[1] > height-10:
-        game_over()
+    button1 = create_button("Manual", width // 2 - BUTTON_WIDTH // 2, height // 2 - BUTTON_HEIGHT - BUTTON_PADDING)
+    button2 = create_button("Automatic", width // 2 - BUTTON_WIDTH // 2, height // 2 + BUTTON_PADDING)
 
-    for block in snake_body[1:]:
-        if snake_pos[0] == block[0] and snake_pos[1] == block[1]:
-            game_over()
+    pygame.display.flip()
 
-    pygame.display.update()
-    clock.tick(5)
 
 
     
