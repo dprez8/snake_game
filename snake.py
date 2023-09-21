@@ -3,6 +3,7 @@ import random
 import pandas as pd
 import time
 import datetime
+from sklearn import tree
 
 # Initialize pygame
 pygame.init()
@@ -39,7 +40,59 @@ clock = pygame.time.Clock()
 counter = 0
 history = pd.DataFrame()
 
-# Game over function
+# Tree
+def get_next_move(row):
+    
+    moves_values = {
+        "UP": {"LEFT": "LEFT", "UP": "FRONT", "RIGHT": "RIGHT", "DOWN": None},
+        "RIGHT": {"UP": "LEFT", "RIGHT": "FRONT", "DOWN": "RIGHT", "LEFT": None},
+        "DOWN": {"RIGHT": "LEFT", "DOWN": "FRONT", "LEFT": "RIGHT", "UP": None},
+        "LEFT": {"DOWN": "LEFT", "LEFT": "FRONT", "UP": "RIGHT", "RIGHT": None}
+    }
+    #print(f'{row["snake_dir"]} - {row["snake_next_dir"]} - {moves_values[row["snake_dir"]][row["snake_next_dir"]]}')
+    return moves_values[row["snake_dir"]][row["snake_next_dir"]]
+
+def get_next_dir(move):
+    moves = {
+        "DOWN": {"LEFT": "LEFT", "FRONT": "UP","RIGHT": "RIGHT"},
+        "RIGHT": {"LEFT": "UP", "FRONT": "RIGHT","RIGHT": "DOWN"},
+        "UP": {"LEFT": "RIGHT", "FRONT": "DOWN","RIGHT": "LEFT"},
+        "LEFT":{"LEFT": "DOWN", "FRONT": "LEFT","RIGHT": "UP"}
+    }
+
+    return moves[snake_dir][move]
+
+def get_status():
+    rel_hor_dist_obj, rel_vert_dist_obj = get_rel_fruit_distance()
+    rel_front_dist_wall, rel_right_dist_wall, rel_left_dist_wall = get_rel_wall_distance()
+    rel_front_dist_body, rel_right_dist_body, rel_left_dist_body = get_rel_body_distance()
+
+    return [rel_hor_dist_obj, rel_vert_dist_obj, rel_front_dist_wall, rel_right_dist_wall, rel_left_dist_wall]
+
+#, rel_front_dist_wall, rel_right_dist_wall, rel_left_dist_wall, rel_front_dist_body, rel_right_dist_body, rel_left_dist_body
+    
+
+register = pd.read_csv("registers\\-- 2023-09-12 20-26-45-418575.csv")
+
+
+register["snake_next_move"] =  register.apply(get_next_move, axis = 1)
+register.dropna(subset= ["snake_next_move"], inplace= True)
+
+#register_1 = register.loc[register["snake_next_move"] != "FRONT"]
+#register_2 = register.loc[register["snake_next_move"] == "FRONT"]
+
+#register =  pd.concat([register_1, register_2], axis=0)
+print(register)
+
+x = register[["rel_hor_dist_obj", "rel_vert_dist_obj","rel_front_dist_wall","rel_right_dist_wall","rel_left_dist_wall"]]
+#,"rel_front_dist_wall","rel_right_dist_wall","rel_left_dist_wall","rel_front_dist_body","rel_right_dist_body","rel_left_dist_body"
+y = register["snake_next_move"]
+
+clf = tree.DecisionTreeClassifier(criterion="entropy", class_weight="balanced")
+clf = clf.fit(x, y)
+
+
+# Register methods
 def get_rel_fruit_distance():
 
     def get_rel_distance_up():
@@ -114,6 +167,7 @@ def add_move():
 
     return register
 
+# Game over function
 def game_over():
     history[:-1].to_csv(f"registers/{str(datetime.datetime.now()).replace('.', '-').replace(':', '-')}.csv")
     my_font = pygame.font.SysFont("times new roman", 50)
@@ -123,7 +177,7 @@ def game_over():
     screen.fill(white)
     screen.blit(game_over_surface, game_over_rect)
     pygame.display.flip()
-    time.sleep(5)
+    time.sleep(1)
     pygame.quit()
     quit()
 
@@ -137,17 +191,11 @@ while True:
             quit()
 
         # Arrow keys to control snake
-        keys = pygame.key.get_pressed()
-        for key in keys:
-            if keys[pygame.K_UP]:
-                change_to = "UP"
-            if keys[pygame.K_DOWN]:
-                change_to = "DOWN"
-            if keys[pygame.K_LEFT]:
-                change_to = "LEFT"
-            if keys[pygame.K_RIGHT]:
-                change_to = "RIGHT"
-
+        
+        
+    print(clf.predict_proba([get_status()]))
+    print(datetime.datetime.now())
+    change_to = get_next_dir(clf.predict([get_status()])[0])
     # Validation of direction
     last_dir = snake_dir
     if change_to == "UP" and not snake_dir == "DOWN":
@@ -169,7 +217,7 @@ while True:
     if snake_dir == "RIGHT":
         snake_pos[0] += 10
 
-    print(add_move())
+    #print(add_move())
     history = history._append(add_move(), ignore_index=True)
     counter += 1
 
