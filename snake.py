@@ -4,6 +4,57 @@ import pandas as pd
 import time
 import datetime
 from sklearn import tree
+import os
+
+#  Cleaning data
+def clean(df):
+    def get_next_move(row):
+    
+        moves_values = {
+            "UP": {"LEFT": "LEFT", "UP": "FRONT", "RIGHT": "RIGHT", "DOWN": None},
+            "RIGHT": {"UP": "LEFT", "RIGHT": "FRONT", "DOWN": "RIGHT", "LEFT": None},
+            "DOWN": {"RIGHT": "LEFT", "DOWN": "FRONT", "LEFT": "RIGHT", "UP": None},
+            "LEFT": {"DOWN": "LEFT", "LEFT": "FRONT", "UP": "RIGHT", "RIGHT": None}
+        }
+
+        #print(f'{row["snake_dir"]} - {row["snake_next_dir"]} - {moves_values[row["snake_dir"]][row["snake_next_dir"]]}')
+
+        return moves_values[row["snake_dir"]][row["snake_next_dir"]]
+
+    def sign(x):
+        if x > 0:
+            return 1
+        elif x < 0:
+            return -1
+        else:
+            return 0
+
+    df["snake_dir"] = df["snake_dir"].shift(-1)
+    df["snake_next_dir"] = df["snake_next_dir"].shift(-1)
+    print(df.shape)
+    df.dropna(subset= ["snake_next_dir", "snake_dir"], inplace= True)
+    print(df.shape)
+    
+    df["snake_next_move"] =  df.apply(get_next_move, axis = 1)
+
+    df["rel_front_dist_min"] = df[['rel_front_dist_wall','rel_front_dist_body']].min(axis=1)
+    df["rel_right_dist_min"] = df[['rel_right_dist_wall','rel_right_dist_body']].min(axis=1)
+    df["rel_left_dist_min"] = df[['rel_left_dist_wall','rel_left_dist_body']].min(axis=1)
+
+    return df
+
+path = "registers/train"
+file_names = os.listdir(path)
+
+train_obs = pd.DataFrame()
+for file_name in file_names:
+    df = pd.read_csv(os.path.join(path,file_name))[:-50]
+    df = clean(df)
+    print(df.shape)
+    train_obs = pd.concat([train_obs, df], axis=0)
+
+train_obs.to_csv("train_obs.csv")
+
 
 # Initialize pygame
 pygame.init()
@@ -54,9 +105,9 @@ def get_next_move(row):
 
 def get_next_dir(move):
     moves = {
-        "DOWN": {"LEFT": "LEFT", "FRONT": "UP","RIGHT": "RIGHT"},
+        "UP": {"LEFT": "LEFT", "FRONT": "UP","RIGHT": "RIGHT"},
         "RIGHT": {"LEFT": "UP", "FRONT": "RIGHT","RIGHT": "DOWN"},
-        "UP": {"LEFT": "RIGHT", "FRONT": "DOWN","RIGHT": "LEFT"},
+        "DOWN": {"LEFT": "RIGHT", "FRONT": "DOWN","RIGHT": "LEFT"},
         "LEFT":{"LEFT": "DOWN", "FRONT": "LEFT","RIGHT": "UP"}
     }
 
@@ -67,15 +118,15 @@ def get_status():
     rel_front_dist_wall, rel_right_dist_wall, rel_left_dist_wall = get_rel_wall_distance()
     rel_front_dist_body, rel_right_dist_body, rel_left_dist_body = get_rel_body_distance()
 
-    return [rel_hor_dist_obj, rel_vert_dist_obj, rel_front_dist_wall, rel_right_dist_wall, rel_left_dist_wall]
-
-#, rel_front_dist_wall, rel_right_dist_wall, rel_left_dist_wall, rel_front_dist_body, rel_right_dist_body, rel_left_dist_body
+    return [rel_hor_dist_obj, rel_vert_dist_obj, rel_front_dist_body, rel_right_dist_body, rel_left_dist_body]
+#
+#, rel_front_dist_wall, rel_right_dist_wall, rel_left_dist_wall, rel_front_dist_body, rel_right_dist_body, rel_left_dist_body, min(i for i in [rel_front_dist_wall, rel_front_dist_body] if i is not None), min(i for i in [rel_right_dist_body, rel_right_dist_wall] if i is not None), min(i for i in [rel_left_dist_body, rel_left_dist_wall] if i is not None)
     
 
-register = pd.read_csv("registers\\-- 2023-09-12 20-26-45-418575.csv")
+register = pd.read_csv("train_obs.csv")
 
 
-register["snake_next_move"] =  register.apply(get_next_move, axis = 1)
+#register["snake_next_move"] =  register.apply(get_next_move, axis = 1)
 register.dropna(subset= ["snake_next_move"], inplace= True)
 
 #register_1 = register.loc[register["snake_next_move"] != "FRONT"]
@@ -84,13 +135,14 @@ register.dropna(subset= ["snake_next_move"], inplace= True)
 #register =  pd.concat([register_1, register_2], axis=0)
 print(register)
 
-x = register[["rel_hor_dist_obj", "rel_vert_dist_obj","rel_front_dist_wall","rel_right_dist_wall","rel_left_dist_wall"]]
-#,"rel_front_dist_wall","rel_right_dist_wall","rel_left_dist_wall","rel_front_dist_body","rel_right_dist_body","rel_left_dist_body"
+model_name = "dist_body_dist_ale"
+x = register[["rel_hor_dist_obj", "rel_vert_dist_obj","rel_front_dist_body","rel_right_dist_body","rel_left_dist_body"]]
+x = x.values
+#,"rel_front_dist_wall","rel_right_dist_wall","rel_left_dist_wall","rel_front_dist_body","rel_right_dist_body","rel_left_dist_body",,"rel_front_dist_min","rel_right_dist_min","rel_left_dist_min"
 y = register["snake_next_move"]
 
-clf = tree.DecisionTreeClassifier(criterion="entropy", class_weight="balanced")
+clf = tree.DecisionTreeClassifier()
 clf = clf.fit(x, y)
-
 
 # Register methods
 def get_rel_fruit_distance():
@@ -169,7 +221,8 @@ def add_move():
 
 # Game over function
 def game_over():
-    history[:-1].to_csv(f"registers/{str(datetime.datetime.now()).replace('.', '-').replace(':', '-')}.csv")
+    os.makedirs(f"registers/model_run/{model_name}", exist_ok=True )
+    clean(history)[:-1].to_csv(f"registers/model_run/{model_name}/{str(datetime.datetime.now()).replace('.', '-').replace(':', '-')}.csv")
     my_font = pygame.font.SysFont("times new roman", 50)
     game_over_surface = my_font.render("Your Score is: " + str(score), True, red)
     game_over_rect = game_over_surface.get_rect()
@@ -177,7 +230,7 @@ def game_over():
     screen.fill(white)
     screen.blit(game_over_surface, game_over_rect)
     pygame.display.flip()
-    time.sleep(1)
+    time.sleep(3)
     pygame.quit()
     quit()
 
@@ -193,8 +246,8 @@ while True:
         # Arrow keys to control snake
         
         
-    print(clf.predict_proba([get_status()]))
-    print(datetime.datetime.now())
+    print(get_status())
+    print(clf.predict([get_status()]))
     change_to = get_next_dir(clf.predict([get_status()])[0])
     # Validation of direction
     last_dir = snake_dir
@@ -270,7 +323,7 @@ while True:
             game_over()
 
     pygame.display.update()
-    clock.tick(5)
+    clock.tick(300)
 
 
     
