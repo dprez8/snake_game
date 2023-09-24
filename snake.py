@@ -222,7 +222,7 @@ def add_move():
 # Game over function
 def game_over():
     os.makedirs(f"registers/model_run/{model_name}", exist_ok=True )
-    clean(history)[:-1].to_csv(f"registers/model_run/{model_name}/{str(datetime.datetime.now()).replace('.', '-').replace(':', '-')}.csv")
+    #clean(history)[:-1].to_csv(f"registers/model_run/{model_name}/{str(datetime.datetime.now()).replace('.', '-').replace(':', '-')}.csv")
     my_font = pygame.font.SysFont("times new roman", 50)
     game_over_surface = my_font.render("Your Score is: " + str(score), True, red)
     game_over_rect = game_over_surface.get_rect()
@@ -230,7 +230,7 @@ def game_over():
     screen.fill(white)
     screen.blit(game_over_surface, game_over_rect)
     pygame.display.flip()
-    time.sleep(3)
+    time.sleep(1)
     pygame.quit()
     quit()
 
@@ -323,7 +323,7 @@ while True:
             game_over()
 
     pygame.display.update()
-    clock.tick(300)
+    clock.tick(10)
 
 
     
