@@ -5,6 +5,10 @@ import time
 import datetime
 from sklearn import tree
 import os
+import numpy as np
+
+from sklearn.neural_network import MLPClassifier
+from sklearn.preprocessing import OneHotEncoder
 
 #  Cleaning data
 def clean(df):
@@ -118,16 +122,16 @@ def get_status():
     rel_front_dist_wall, rel_right_dist_wall, rel_left_dist_wall = get_rel_wall_distance()
     rel_front_dist_body, rel_right_dist_body, rel_left_dist_body = get_rel_body_distance()
 
-    return [rel_hor_dist_obj, rel_vert_dist_obj, rel_front_dist_body, rel_right_dist_body, rel_left_dist_body]
+    return [rel_hor_dist_obj, rel_vert_dist_obj,min(i for i in [rel_front_dist_wall, rel_front_dist_body] if i is not None), min(i for i in [rel_right_dist_body, rel_right_dist_wall] if i is not None), min(i for i in [rel_left_dist_body, rel_left_dist_wall] if i is not None)]
 #
 #, rel_front_dist_wall, rel_right_dist_wall, rel_left_dist_wall, rel_front_dist_body, rel_right_dist_body, rel_left_dist_body, min(i for i in [rel_front_dist_wall, rel_front_dist_body] if i is not None), min(i for i in [rel_right_dist_body, rel_right_dist_wall] if i is not None), min(i for i in [rel_left_dist_body, rel_left_dist_wall] if i is not None)
     
 
-register = pd.read_csv("train_obs.csv")
+register = pd.read_csv("clean_obs.csv")
 
 
 #register["snake_next_move"] =  register.apply(get_next_move, axis = 1)
-register.dropna(subset= ["snake_next_move"], inplace= True)
+register.dropna(subset= ["snake_true_next_move"], inplace= True)
 
 #register_1 = register.loc[register["snake_next_move"] != "FRONT"]
 #register_2 = register.loc[register["snake_next_move"] == "FRONT"]
@@ -136,13 +140,18 @@ register.dropna(subset= ["snake_next_move"], inplace= True)
 print(register)
 
 model_name = "dist_body_dist_ale"
-x = register[["rel_hor_dist_obj", "rel_vert_dist_obj","rel_front_dist_body","rel_right_dist_body","rel_left_dist_body"]]
+x = register[["rel_hor_dist_obj", "rel_vert_dist_obj","rel_front_dist_min","rel_right_dist_min","rel_left_dist_min"]]
 x = x.values
 #,"rel_front_dist_wall","rel_right_dist_wall","rel_left_dist_wall","rel_front_dist_body","rel_right_dist_body","rel_left_dist_body",,"rel_front_dist_min","rel_right_dist_min","rel_left_dist_min"
-y = register["snake_next_move"]
+y = register["snake_true_next_move"]
+#label_encoder = OneHotEncoder(sparse=False)
+#y = label_encoder.fit_transform(np.array(y).reshape(-1, 1))
 
-clf = tree.DecisionTreeClassifier()
-clf = clf.fit(x, y)
+clf = MLPClassifier(hidden_layer_sizes=(50,50,50,50,50,50,50,50), verbose = True, random_state=1, max_iter=500).fit(x, y)
+
+
+#clf = tree.DecisionTreeClassifier()
+#clf = clf.fit(x, y)
 
 # Register methods
 def get_rel_fruit_distance():
@@ -247,8 +256,9 @@ while True:
         
         
     print(get_status())
-    print(clf.predict([get_status()]))
-    change_to = get_next_dir(clf.predict([get_status()])[0])
+    prediction = clf.predict([get_status()])[0]
+    print(prediction)
+    change_to = get_next_dir(prediction)
     # Validation of direction
     last_dir = snake_dir
     if change_to == "UP" and not snake_dir == "DOWN":
@@ -323,7 +333,7 @@ while True:
             game_over()
 
     pygame.display.update()
-    clock.tick(300)
+    clock.tick(100)
 
 
     
