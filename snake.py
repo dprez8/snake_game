@@ -333,7 +333,7 @@ while True:
             game_over()
 
     pygame.display.update()
-    clock.tick(100)
+    clock.tick(10)
 
 
     
