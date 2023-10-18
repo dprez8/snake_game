@@ -122,16 +122,22 @@ def get_status():
     rel_front_dist_wall, rel_right_dist_wall, rel_left_dist_wall = get_rel_wall_distance()
     rel_front_dist_body, rel_right_dist_body, rel_left_dist_body = get_rel_body_distance()
 
-    return [rel_hor_dist_obj, rel_vert_dist_obj,min(i for i in [rel_front_dist_wall, rel_front_dist_body] if i is not None), min(i for i in [rel_right_dist_body, rel_right_dist_wall] if i is not None), min(i for i in [rel_left_dist_body, rel_left_dist_wall] if i is not None)]
+    return [rel_hor_dist_obj, rel_vert_dist_obj, min(i for i in [rel_front_dist_wall, rel_front_dist_body] if i is not None), min(i for i in [rel_right_dist_body, rel_right_dist_wall] if i is not None), min(i for i in [rel_left_dist_body, rel_left_dist_wall] if i is not None)]
 #
 #, rel_front_dist_wall, rel_right_dist_wall, rel_left_dist_wall, rel_front_dist_body, rel_right_dist_body, rel_left_dist_body, min(i for i in [rel_front_dist_wall, rel_front_dist_body] if i is not None), min(i for i in [rel_right_dist_body, rel_right_dist_wall] if i is not None), min(i for i in [rel_left_dist_body, rel_left_dist_wall] if i is not None)
     
 
 register = pd.read_csv("clean_obs.csv")
 
+# relleno nulls con pared
+#register['rel_front_dist_body'] = register['rel_front_dist_body'].fillna(register['rel_front_dist_wall'])
+#register['rel_right_dist_body'] = register['rel_right_dist_body'].fillna(register['rel_right_dist_wall'])
+#register['rel_left_dist_body'] = register['rel_left_dist_body'].fillna(register['rel_left_dist_wall'])
 
 #register["snake_next_move"] =  register.apply(get_next_move, axis = 1)
 register.dropna(subset= ["snake_true_next_move"], inplace= True)
+
+print(register.shape)
 
 #register_1 = register.loc[register["snake_next_move"] != "FRONT"]
 #register_2 = register.loc[register["snake_next_move"] == "FRONT"]
@@ -139,16 +145,18 @@ register.dropna(subset= ["snake_true_next_move"], inplace= True)
 #register =  pd.concat([register_1, register_2], axis=0)
 print(register)
 
-model_name = "dist_body_dist_ale"
-x = register[["rel_hor_dist_obj", "rel_vert_dist_obj","rel_front_dist_min","rel_right_dist_min","rel_left_dist_min"]]
+model_name = "testing"
+x = register[["rel_hor_dist_obj", "rel_vert_dist_obj","rel_front_dist_min","rel_right_dist_min", "rel_left_dist_min"]]
 x = x.values
 #,"rel_front_dist_wall","rel_right_dist_wall","rel_left_dist_wall","rel_front_dist_body","rel_right_dist_body","rel_left_dist_body",,"rel_front_dist_min","rel_right_dist_min","rel_left_dist_min"
 y = register["snake_true_next_move"]
 #label_encoder = OneHotEncoder(sparse=False)
 #y = label_encoder.fit_transform(np.array(y).reshape(-1, 1))
 
-clf = MLPClassifier(hidden_layer_sizes=(50,50,50,50,50,50,50,50), verbose = True, random_state=1, max_iter=500).fit(x, y)
-
+clfs = [MLPClassifier(hidden_layer_sizes=(150,150,150,150,150,150), verbose = True, max_iter=500).fit(x, y),
+        MLPClassifier(hidden_layer_sizes=(150,150,150,150,150,150), verbose = True, max_iter=500).fit(x, y),]
+#print(f'Best loss 1: {clfs[0].best_loss_}')
+#print(f'Best loss 2: {clfs[1].best_loss_}')
 
 #clf = tree.DecisionTreeClassifier()
 #clf = clf.fit(x, y)
@@ -256,7 +264,8 @@ while True:
         
         
     print(get_status())
-    prediction = clf.predict([get_status()])[0]
+    selected_clf = random.choice(clfs)
+    prediction = selected_clf.predict([get_status()])[0]
     print(prediction)
     change_to = get_next_dir(prediction)
     # Validation of direction
@@ -337,5 +346,4 @@ while True:
 
 
     
-
 
