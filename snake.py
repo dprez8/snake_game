@@ -6,6 +6,9 @@ import datetime
 from sklearn import tree
 import os
 import numpy as np
+import warnings
+from sklearn.exceptions import ConvergenceWarning
+import matplotlib.pyplot as plt
 
 from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import OneHotEncoder
@@ -147,13 +150,92 @@ y = register["snake_true_next_move"]
 #label_encoder = OneHotEncoder(sparse=False)
 #y = label_encoder.fit_transform(np.array(y).reshape(-1, 1))
 
-clf = MLPClassifier(hidden_layer_sizes=(50,50,50,50,50,50,50,50), verbose = True, random_state=1, max_iter=500).fit(x, y)
+params = [
+    {
+        "solver": "lbfgs",
+        "hidden_layer_sizes": (50,50,50,50,50,50)
+    },
+    {
+        "solver": "lbfgs",
+        "hidden_layer_sizes": (150,150,150,150,150,150)
+    },
+    {
+        "solver": "sgd",
+        "hidden_layer_sizes": (50,50,50,50,50,50)
+    },
+    {
+        "solver": "sgd",
+        "hidden_layer_sizes": (150,150,150,150,150,150)
+    },
+    {
+        "solver": "adam",
+        "hidden_layer_sizes": (50,50,50,50,50,50)
+    },
+    {
+        "solver": "adam",
+        "hidden_layer_sizes": (150,150,150,150,150,150)
+    }
+    ]
+
+labels = [
+    "lbfgs 50 neurons",
+    "lbfgs 150 neurons",
+    "sgd 50 neurons",
+    "sgd 150 neurons",
+    "adam 50 neurons",
+    "adam 150 neurons"
+]
+
+plot_args = [
+    {"c": "red", "linestyle": "-"},
+    {"c": "green", "linestyle": "-"},
+    {"c": "blue", "linestyle": "-"},
+    {"c": "red", "linestyle": "--"},
+    {"c": "green", "linestyle": "--"},
+    {"c": "blue", "linestyle": "--"},
+    {"c": "black", "linestyle": "-"},
+]
+
+def train_params():
+    mlps = []
+    fig, axes = plt.subplots(2, 2, figsize=(15, 10))
+    ax = axes.ravel()[0]
+
+    ax.set_title("Learning Rate Strategies")
+
+    for label, param in zip(labels, params):
+        print("training: %s" % label)
+
+        array =  (150,150,150,150,150,150)
+        mlp = MLPClassifier(verbose=True,random_state=0, max_iter=10, **param)
+
+        # some parameter combinations will not converge as can be seen on the
+        # plots so they are ignored here
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore", category=ConvergenceWarning, module="sklearn"
+            )
+            mlp.fit(x, y)
+
+        mlps.append(mlp)
+        print("Training set score: %f" % mlp.score(x, y))
+        print("Training set loss: %f" % mlp.loss_)
+    for mlp, label, args in zip(mlps, labels, plot_args):
+        ax.plot(mlp.loss_curve_, label=label, **args)
 
 
-#clf = tree.DecisionTreeClassifier()
-#clf = clf.fit(x, y)
 
-# Register methods
+train_params()
+
+#array =  (150,150,150,150,150,150)
+#clf = MLPClassifier(hidden_layer_sizes=array, verbose = True, random_state=1, max_iter=500).fit(x, y)
+#print(f'Best loss: {clf.best_loss_}')
+
+
+"""
+clf = tree.DecisionTreeClassifier()
+clf = clf.fit(x, y)
+#Register methods
 def get_rel_fruit_distance():
 
     def get_rel_distance_up():
@@ -334,7 +416,7 @@ while True:
 
     pygame.display.update()
     clock.tick(10)
-
+"""
 
     
 
