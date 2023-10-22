@@ -6,6 +6,7 @@ import datetime
 from sklearn import tree
 import os
 import numpy as np
+import pickle
 
 from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import OneHotEncoder
@@ -145,7 +146,7 @@ print(register.shape)
 #register =  pd.concat([register_1, register_2], axis=0)
 print(register)
 
-model_name = "testing"
+model_name = "rna_300_6_alpha_03"
 x = register[["rel_hor_dist_obj", "rel_vert_dist_obj","rel_front_dist_min","rel_right_dist_min", "rel_left_dist_min"]]
 x = x.values
 #,"rel_front_dist_wall","rel_right_dist_wall","rel_left_dist_wall","rel_front_dist_body","rel_right_dist_body","rel_left_dist_body",,"rel_front_dist_min","rel_right_dist_min","rel_left_dist_min"
@@ -153,10 +154,22 @@ y = register["snake_true_next_move"]
 #label_encoder = OneHotEncoder(sparse=False)
 #y = label_encoder.fit_transform(np.array(y).reshape(-1, 1))
 
-clfs = [MLPClassifier(hidden_layer_sizes=(150,150,150,150,150,150), verbose = True, max_iter=500).fit(x, y),
-        MLPClassifier(hidden_layer_sizes=(150,150,150,150,150,150), verbose = True, max_iter=500).fit(x, y),]
-#print(f'Best loss 1: {clfs[0].best_loss_}')
-#print(f'Best loss 2: {clfs[1].best_loss_}')
+clfs = [MLPClassifier(hidden_layer_sizes=(500,500,500,500,500,500), alpha=0.3, verbose = True, max_iter=500).fit(x, y),
+        MLPClassifier(hidden_layer_sizes=(500,500,500,500,500,500), alpha=0.3, verbose = True, max_iter=500).fit(x, y),]
+# #print(f'Best loss 1: {clfs[0].best_loss_}')
+# #print(f'Best loss 2: {clfs[1].best_loss_}')
+# save
+with open(f'{model_name}_clf1.pkl', 'wb') as f:
+    pickle.dump(clfs[0], f)
+with open(f'{model_name}_clf2.pkl', 'wb') as f:
+    pickle.dump(clfs[1], f)
+
+# load
+# with open(f'{model_name}_clf1.pkl', 'rb') as f:
+#     clf1 = pickle.load(f)
+# with open(f'{model_name}_clf2.pkl', 'rb') as f:
+#     clf2 = pickle.load(f)
+# clfs = [clf1, clf2]
 
 #clf = tree.DecisionTreeClassifier()
 #clf = clf.fit(x, y)
@@ -240,6 +253,8 @@ def add_move():
 def game_over():
     os.makedirs(f"registers/model_run/{model_name}", exist_ok=True )
     clean(history)[:-1].to_csv(f"registers/model_run/{model_name}/{str(datetime.datetime.now()).replace('.', '-').replace(':', '-')}.csv")
+    #update csv with best loss
+    pd.DataFrame([clfs[0].best_loss_]).to_csv(f"registers/model_run/{model_name}/best_loss.csv")
     my_font = pygame.font.SysFont("times new roman", 50)
     game_over_surface = my_font.render("Your Score is: " + str(score), True, red)
     game_over_rect = game_over_surface.get_rect()
@@ -342,7 +357,7 @@ while True:
             game_over()
 
     pygame.display.update()
-    clock.tick(10)
+    clock.tick(200)
 
 
     
