@@ -147,7 +147,7 @@ print(register.shape)
 #register =  pd.concat([register_1, register_2], axis=0)
 print(register)
 
-model_name = "rna_150_6_alpha_03_4"
+model_name = "rna_300_3_alpha_03_4"
 x = register[["rel_hor_dist_obj", "rel_vert_dist_obj","rel_front_dist_min","rel_right_dist_min", "rel_left_dist_min"]]
 x = x.values
 #,"rel_front_dist_wall","rel_right_dist_wall","rel_left_dist_wall","rel_front_dist_body","rel_right_dist_body","rel_left_dist_body",,"rel_front_dist_min","rel_right_dist_min","rel_left_dist_min"
@@ -155,10 +155,10 @@ y = register["snake_true_next_move"]
 #label_encoder = OneHotEncoder(sparse=False)
 #y = label_encoder.fit_transform(np.array(y).reshape(-1, 1))
 
-# clfs = [MLPClassifier(hidden_layer_sizes=(150,150,150,150,150,150), alpha=0.3, verbose = True, max_iter=500).fit(x, y),
-#         MLPClassifier(hidden_layer_sizes=(150,150,150,150,150,150), alpha=0.3, verbose = True, max_iter=500).fit(x, y),
-#         MLPClassifier(hidden_layer_sizes=(150,150,150,150,150,150), alpha=0.3, verbose = True, max_iter=500).fit(x, y),
-#         MLPClassifier(hidden_layer_sizes=(150,150,150,150,150,150), alpha=0.3, verbose = True, max_iter=500).fit(x, y),]
+# clfs = [MLPClassifier(hidden_layer_sizes=(300,300,300), alpha=0.3, verbose = True, max_iter=500).fit(x, y),
+#         MLPClassifier(hidden_layer_sizes=(300,300,300), alpha=0.3, verbose = True, max_iter=500).fit(x, y),
+#         MLPClassifier(hidden_layer_sizes=(300,300,300), alpha=0.3, verbose = True, max_iter=500).fit(x, y),
+#         MLPClassifier(hidden_layer_sizes=(300,300,300), alpha=0.3, verbose = True, max_iter=500).fit(x, y),]
 # #print(f'Best loss 1: {clfs[0].best_loss_}')
 # #print(f'Best loss 2: {clfs[1].best_loss_}')
 # save
